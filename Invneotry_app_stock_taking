@@ -1,0 +1,556 @@
+# Stock Taking Mobile Application – Development Requirements
+
+## 1. Project Overview
+
+Develop a professional **Flutter-based Stock Taking Mobile Application** for conducting physical inventory verification and stock reconciliation.
+
+The application must integrate with the existing MSAPI project.
+
+**Existing Backend Reference:**
+
+`D:\0000\MJ\MSAPI\MSAPI\`
+
+Before development, analyze the existing MSAPI architecture, authentication mechanism, product masters, inventory tables, stock-related stored procedures, and available API endpoints.
+
+Reuse existing APIs wherever possible. If additional endpoints are required, implement them within the existing MSAPI project, strictly following its established architecture, naming conventions, repository pattern, and database access standards.
+
+The application must support stock-taking operations based on:
+
+- Stock Taking Date
+- Assigned Employee / Stock Taking Person
+- Company
+- Branch
+- Warehouse / Godown
+- Stock Taking Session
+- Product and Barcode
+- Physical Stock Quantity
+
+## 2. Mandatory Technical Architecture
+
+### Flutter Application
+
+The application must strictly follow:
+
+- **BLoC Architecture** for state management.
+- Clean Architecture with Presentation, Domain, and Data layers.
+- Repository Pattern for API and database operations.
+- SQLite for offline local data storage.
+- Offline-first application design.
+- Secure authentication and session management.
+- Dependency injection.
+- Reusable UI components.
+- Centralized error handling and logging.
+- Proper loading, empty, success, and error states.
+- Responsive UI for Android mobile devices and handheld barcode scanners.
+
+### Offline Caching and Synchronization
+
+Implement a reliable offline synchronization mechanism.
+
+1. Download assigned stock-taking sessions and required product masters.
+2. Store product information, barcode mappings, stock-taking details, and session data in SQLite.
+3. Allow users to scan and count stock without an internet connection.
+4. Save every stock-count entry locally immediately.
+5. Maintain synchronization status for each transaction.
+6. Automatically synchronize pending transactions when connectivity is restored, with configurable retry and backoff.
+7. Provide a manual synchronization option.
+8. Prevent duplicate transactions during synchronization using unique client-generated transaction IDs.
+9. Handle synchronization conflicts and rejected records.
+10. Display pending, synchronized, failed, and conflict counts.
+11. Preserve unsynchronized transactions even after application restart.
+12. Do not delete local transactions until successful server acknowledgement.
+13. Prevent modification of approved or finalized sessions.
+14. Maintain a synchronization audit log.
+
+**Important:** SQLite should be the local operational database, while SQL Server remains the central database and source of truth.
+
+## 3. Authentication and User Management
+
+- Login using existing MSAPI authentication.
+- Employee-wise login.
+- Company and branch selection, where applicable.
+- Role-based permissions.
+- Secure token storage.
+- Automatic session restoration.
+- Logout functionality.
+- Restrict access to assigned stock-taking sessions.
+- Support roles such as Stock Counter, Supervisor, Inventory Manager, and Administrator.
+
+## 4. Stock Taking Session Creation
+
+Introduce a Stock Taking Session Master.
+
+**Session Header Fields**
+
+| Field | Description |
+|---|---|
+| StockTakingId | Unique session identifier |
+| StockTakingNo | Auto-generated session number |
+| StockTakingDate | Physical stock verification date |
+| CompanyId | Company |
+| BranchId | Branch |
+| WarehouseId | Warehouse / Godown |
+| AssignedEmployeeId | Responsible employee |
+| SessionType | Full / Partial / Cycle Count |
+| StockSnapshotDateTime | System stock snapshot timestamp |
+| Status | Draft / Assigned / In Progress / Submitted / Approved / Closed |
+| Remarks | Additional comments |
+| CreatedBy | Session creator |
+| CreatedDate | Creation timestamp |
+
+A session should support assigning multiple employees where required.
+
+The application must support multiple sessions on different dates, warehouses, and employees.
+
+## 5. Stock Taking Dashboard
+
+Create a professional dashboard with summary cards.
+
+**Dashboard Cards**
+
+- Today's Stock Taking Sessions
+- Assigned Sessions
+- In Progress Sessions
+- Completed Sessions
+- Pending Synchronization
+- Total Products Counted
+- Products Pending Count
+- Variance Items
+- Pending Approval Sessions
+
+**Filters**
+
+- Date
+- Employee
+- Branch
+- Warehouse
+- Session Status
+- Stock Taking Type
+
+Each card should navigate to the corresponding detailed list.
+
+## 6. Barcode-Based Stock Taking
+
+Barcode scanning must be the primary method of stock counting.
+
+**Features**
+
+- Scan product barcode using the mobile camera.
+- Support external Bluetooth barcode scanners.
+- Support handheld Android barcode terminals.
+- Support common barcode formats such as EAN-13, UPC, Code 128, and QR codes where configured.
+- Automatically identify the product using its barcode.
+- Support multiple barcodes for the same product.
+- Support different product packing units.
+- Display product name, code, packing, unit, and image where available.
+- Allow manual product search when a barcode is unavailable.
+- Provide audible or vibration feedback after scanning.
+- Display an appropriate warning for invalid or unrecognized barcodes.
+
+### Barcode and Packing Conversion
+
+The system must support products with different packing configurations.
+
+Example:
+
+- Product: Milk Packet
+- Base Unit: Packet
+- Packing: Crate
+- 1 Crate = 24 Packets
+
+If the user counts 5 crates, the system should calculate:
+
+**5 × 24 = 120 Packets**
+
+All stock reconciliation calculations must use the product's base inventory unit.
+
+## 7. Physical Stock Counting
+
+The stock-counting screen must provide:
+
+- Product Code
+- Product Name
+- Barcode
+- Packing Unit
+- Counted Quantity
+- Base Unit Quantity
+- Batch Number, if applicable
+- Expiry Date, if applicable
+- Storage Location / Rack
+- Counted By
+- Counted Date and Time
+- Remarks
+
+**Counting Methods**
+
+1. Barcode Scan and Quantity Entry
+2. Repeated Barcode Scan – Increment Quantity
+3. Manual Product Selection
+4. Bulk Quantity Entry
+5. Location-Wise Counting
+6. Batch-Wise Counting
+
+Allow quantity correction before submission, with an audit trail for changes.
+
+## 8. Professional Stock Counting Methods
+
+The application must support the following industry-standard inventory verification methods.
+
+### A. Full Physical Stock Count
+
+Count all products in the selected warehouse or branch.
+
+Suitable for annual or periodic stock verification.
+
+### B. Cycle Counting
+
+Count selected products periodically without conducting a complete warehouse stock count.
+
+Support scheduling based on product priority, value, or frequency.
+
+### C. ABC-Based Stock Counting
+
+Classify products into:
+
+- A Category – High-value or high-priority products
+- B Category – Medium-value products
+- C Category – Low-value products
+
+Support configurable counting frequency for each category.
+
+### D. Blind Stock Counting
+
+Provide an option to hide the system stock quantity from the counting employee.
+
+This helps prevent employees from entering quantities based on the system balance rather than physically verifying stock.
+
+### E. Double Counting
+
+Allow two employees to independently count the same stock.
+
+Compare both results and highlight mismatches.
+
+### F. Recount Process
+
+When a variance exceeds the configured tolerance, assign the product for recounting.
+
+Maintain the original count and recount history.
+
+### G. Location-Wise Stock Counting
+
+Allow stock verification by:
+
+- Warehouse
+- Zone
+- Rack
+- Shelf
+- Bin Location
+
+### H. Batch and Expiry-Based Counting
+
+Support batch-wise stock verification for products requiring batch and expiry tracking.
+
+## 9. Stock Variance Analysis
+
+After physical counting, compare the counted quantity with the system stock quantity.
+
+**Variance Calculation**
+
+Variance Quantity = Physical Quantity − System Quantity
+
+Variance Value = Variance Quantity × Inventory Valuation Rate
+
+Example:
+
+| Product | System Qty | Physical Qty | Variance |
+|---|---:|---:|---:|
+| Milk Packet | 500 | 490 | -10 |
+| Curd Packet | 200 | 205 | +5 |
+| Butter | 100 | 100 | 0 |
+
+Display:
+
+- Shortage Quantity
+- Excess Quantity
+- Shortage Value
+- Excess Value
+- Total Variance Value
+- Variance Percentage
+- Products with Zero Variance
+
+Support configurable tolerance limits.
+
+## 10. Stock Taking Submission and Approval
+
+Implement the following workflow:
+
+**Draft → Assigned → In Progress → Submitted → Recount (if required) → Approved → Posted → Closed**
+
+Requirements:
+
+- Employees can save counts as drafts.
+- Employees submit completed stock-taking sessions.
+- Supervisors verify submitted quantities.
+- Supervisors can request recounting.
+- Authorized managers approve final quantities.
+- Only approved sessions can be posted to inventory.
+- Stock adjustment posting must use existing inventory voucher and accounting logic.
+- Prevent duplicate stock adjustment posting.
+- Maintain approval history.
+- Do not allow direct modification of posted transactions.
+- Corrections after posting must follow an authorized reversal or adjustment process.
+
+## 11. Stock Adjustment Integration
+
+After approval, allow authorized users to generate stock adjustment vouchers.
+
+Support:
+
+- Stock Shortage Adjustment
+- Stock Excess Adjustment
+- Warehouse-Wise Adjustment
+- Batch-Wise Adjustment
+- Stock Adjustment Voucher Reference
+- Accounting Impact, where applicable
+
+All inventory updates must be performed through the backend API.
+
+**Never directly update inventory stock balances from the Flutter application.**
+
+## 12. Additional Professional Features
+
+### Stock Movement During Counting
+
+Support stock-taking sessions in active warehouses.
+
+- Capture a consistent stock snapshot.
+- Track stock movements occurring after the snapshot.
+- Support a stock-freeze option where required.
+- Reconcile movements before final variance calculation.
+- Prevent inaccurate adjustments caused by sales, purchases, or transfers during counting.
+
+### Count Progress Tracking
+
+- Total Assigned Products
+- Counted Products
+- Pending Products
+- Count Completion Percentage
+- Employee-Wise Progress
+- Location-Wise Progress
+
+### Duplicate Counting Control
+
+- Detect repeated scans.
+- Allow configurable quantity incrementing.
+- Prevent accidental duplicate count entries.
+- Provide warnings when products are counted by multiple employees.
+- Support intentional multiple counting passes with separate count records.
+
+### Product Not Found Handling
+
+If a scanned barcode is not available:
+
+- Display a Product Not Found warning.
+- Allow the user to record the unknown barcode separately.
+- Save the barcode with remarks and optional image.
+- Send the record for supervisor review.
+- Do not automatically create a product in the master database.
+
+### Audit Trail
+
+Maintain:
+
+- Original Count
+- Revised Count
+- Counted By
+- Counted Date and Time
+- Device Identifier
+- Synchronization Timestamp
+- Approved By
+- Approval Timestamp
+- Adjustment Voucher Reference
+
+## 13. Reports
+
+Provide the following reports:
+
+1. Stock Taking Summary Report
+2. Date-Wise Stock Taking Report
+3. Employee-Wise Stock Taking Report
+4. Warehouse-Wise Stock Verification Report
+5. Product-Wise Physical Stock Report
+6. Stock Shortage Report
+7. Stock Excess Report
+8. Stock Variance Value Report
+9. Pending Stock Count Report
+10. Recount History Report
+11. Stock Adjustment Report
+12. Stock Taking Audit Report
+13. Session Synchronization Report
+
+Reports should support filtering, PDF generation, and Excel export where applicable.
+
+## 14. Recommended Mobile Screens
+
+**Bottom Navigation**
+
+1. Home
+2. Sessions
+3. Scan
+4. History
+5. More
+
+**Main Screens**
+
+- Splash Screen
+- Login Screen
+- Company / Branch Selection
+- Stock Taking Dashboard
+- Assigned Sessions
+- Create Stock Taking Session (permission-based)
+- Stock Taking Details
+- Barcode Scanner
+- Product Counting Screen
+- Counted Product List
+- Pending Products
+- Stock Variance Summary
+- Recount Screen
+- Session Submission
+- Approval Screen
+- Stock Taking History
+- Synchronization Status
+- Reports
+- Settings
+
+## 15. MSAPI Development Requirements
+
+Analyze the existing MSAPI project before implementing additional endpoints.
+
+Create new APIs only where equivalent functionality does not already exist.
+
+**Suggested Endpoints**
+
+| Endpoint | Purpose |
+|---|---|
+| GET /api/stocktaking/sessions | List sessions |
+| POST /api/stocktaking/sessions | Create session |
+| GET /api/stocktaking/sessions/{id} | Session details |
+| GET /api/stocktaking/products | Download assigned product data |
+| GET /api/stocktaking/barcodes/{barcode} | Barcode lookup |
+| POST /api/stocktaking/counts/sync | Synchronize offline counts |
+| GET /api/stocktaking/variance/{id} | Variance details |
+| POST /api/stocktaking/submit | Submit session |
+| POST /api/stocktaking/recount | Request recount |
+| POST /api/stocktaking/approve | Approve session |
+| POST /api/stocktaking/post | Post stock adjustment |
+| GET /api/stocktaking/reports | Stock taking reports |
+
+These are proposed routes. Adapt them to the existing MSAPI routing and architectural conventions.
+
+### Database Tables – Suggested
+
+- StockTakingHeader
+- StockTakingAssignment
+- StockTakingDetails
+- StockTakingCountHistory
+- StockTakingRecount
+- StockTakingApprovalHistory
+- StockTakingSyncLog
+- StockTakingAdjustmentReference
+
+Before creating tables, verify whether equivalent structures already exist.
+
+Maintain all new SQL scripts in the repository's existing Table Script and Stored Procedure Script folders.
+
+## 16. Important Business Rules
+
+1. Each stock-taking session must have a unique session number.
+2. A session must be associated with a stock-taking date and warehouse.
+3. Each count must identify the employee responsible.
+4. Product quantities must be normalized to base inventory units.
+5. Stock-count entries must support offline storage.
+6. Synchronization must be idempotent.
+7. Duplicate API requests must not duplicate count records.
+8. Blind-count mode must not expose system quantities through API responses to counting users.
+9. Submitted sessions must be protected from unauthorized changes.
+10. Recount history must be preserved.
+11. Approval and posting must be separate operations.
+12. Stock adjustments must be generated only from approved and reconciled quantities.
+13. Sessions must not be posted more than once.
+14. All operations must respect company, branch, warehouse, and user permissions.
+15. Incomplete offline counts must never be silently discarded.
+16. All quantities must support appropriate decimal precision for the product's unit of measure.
+
+## 17. Development and Delivery Instructions
+
+Follow this implementation sequence:
+
+**Phase 1 – Analysis and Architecture**
+
+- Inspect the existing MSAPI project.
+- Identify existing authentication, product, barcode, stock, and warehouse services.
+- Identify reusable stored procedures and database structures.
+- Finalize Flutter BLoC architecture.
+- Define the SQLite schema and synchronization strategy.
+
+**Phase 2 – Core Stock Taking**
+
+- Login and authentication
+- Stock Taking Dashboard
+- Session management
+- Product master synchronization
+- Barcode scanning
+- Physical quantity entry
+- SQLite offline storage
+- Synchronization
+
+**Phase 3 – Reconciliation and Approval**
+
+- Stock variance calculation
+- Blind counting
+- Recount workflow
+- Supervisor approval
+- Stock adjustment posting
+- Audit trail
+
+**Phase 4 – Advanced Features**
+
+- Cycle counting
+- ABC classification
+- Location-wise counting
+- Employee performance reports
+- Advanced analytics
+- PDF and Excel reports
+
+**Phase 5 – Testing and Validation**
+
+Test the application for:
+
+- Complete offline operation
+- Internet disconnection during synchronization
+- Duplicate barcode scans
+- Multiple packing units
+- Multiple employees counting the same session
+- Concurrent stock movements
+- Duplicate synchronization requests
+- Application restart during counting
+- Approval and stock posting
+- Large product masters
+- Large stock-taking sessions
+
+## 18. Expected Deliverables
+
+1. Complete Flutter Stock Taking Mobile Application.
+2. Clean BLoC Architecture implementation.
+3. SQLite database schema and offline caching.
+4. Reliable synchronization mechanism.
+5. Integrated MSAPI endpoints.
+6. Required SQL Server tables and stored procedures.
+7. Barcode scanning functionality.
+8. Stock reconciliation and approval workflow.
+9. Stock adjustment integration.
+10. Stock taking reports.
+11. API documentation.
+12. Build and deployment instructions.
+
+**Final Objective:** Develop a reliable, professional, offline-first Stock Taking Mobile Application that enables employees to conduct physical inventory verification accurately while providing supervisors and management with complete visibility into stock variances, recounts, approvals, and stock adjustments.
